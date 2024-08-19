@@ -1,4 +1,4 @@
-# Sistema de Trancas e Gestão de Acesso
+# Sistema de Escalonador de processos
 
 ## Sobre o sistema
 
