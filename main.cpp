@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string.h>
 #include <algorithm>
-
+#include <queue>
 //    tempo de retorno: quantidade necessaria de tempo para  executar o processo
 //    tempo de espera qauntidade de tempo que o processo ficou na fila
 //    tempo de resposta : tempo para execultar pela primeira vez
@@ -17,6 +17,7 @@ struct Processos
     int temRetorno;
     int tempEspera;
     int tempResposta;
+    int tempRestante;//para o RR
 
     bool operator==(const Processos& other) const {
         return id == other.id ;
@@ -53,26 +54,25 @@ void readFile(){
       
 }
 
-bool comparar(const Processos& a, const Processos& b) {
+bool compararFCFS(const Processos& a, const Processos& b) {
     return a.tempArrival < b.tempArrival;
 }
 
-void FCFS(){
+bool compararSJF(const Processos& a, const Processos& b) {
+    if (a.tempArrival == b.tempArrival) {
+        return a.tempDuration < b.tempDuration; // Se o tempo de chegada for igual, comparar pela duração
+    }
+    return a.tempArrival < b.tempArrival; // Caso contrário, comparar pelo tempo de chegada
+}
 
-std::cout << "-------------------FCFS-------------------" << std::endl;
-std:: vector<Processos> queue(processos.size());
-std:: vector<Processos> queueSequence;
-std::copy(processos.begin(), processos.end(), queue.begin());
-    
-    std::sort(queue.begin(), queue.end(), comparar);
-
+void calcularTempos(std::vector<Processos>& processos) {
     int tempoCorrente = 0;
-       int somaRetorno = 0;
+    int somaRetorno = 0;
     int somaEspera = 0;
     int somaResposta = 0;
 
     // Calculando tempos de retorno, espera e resposta
-    for (auto& processo : queue) {
+    for (auto& processo : processos) {
         if (tempoCorrente < processo.tempArrival) {
             tempoCorrente = processo.tempArrival;
         }
@@ -88,62 +88,130 @@ std::copy(processos.begin(), processos.end(), queue.begin());
         somaResposta += processo.tempResposta;
     }
 
+  double mediaRetorno = static_cast<double>(somaRetorno) / processos.size();
+    double mediaEspera = static_cast<double>(somaEspera) / processos.size();
+    double mediaResposta = static_cast<double>(somaResposta) / processos.size();
 
-    // Exibindo os processos ordenados e seus tempos calculados
-    std::cout << "\nProcessos ordenados por FCFS com tempos de retorno, espera e resposta:\n";
-    for (const auto& processo : queue) {
-        std::cout << "Processo " << processo.id 
-                  << " - Tempo de chegada: " << processo.tempArrival
-                  << ", Tempo de duracao: " << processo.tempDuration
-                  << ", Tempo de retorno: " << processo.temRetorno
-                  << ", Tempo de espera: " << processo.tempEspera
-                  << ", Tempo de resposta: " << processo.tempResposta << '\n';
-    }
-
-  double mediaRetorno = static_cast<double>(somaRetorno) / queue.size();
-    double mediaEspera = static_cast<double>(somaEspera) / queue.size();
-    double mediaResposta = static_cast<double>(somaResposta) / queue.size();
-
-  std::cout << "\nMédias:\n";
-    std::cout << "Média do tempo de retorno: " << mediaRetorno << '\n';
-    std::cout << "Média do tempo de espera: " << mediaEspera << '\n';
-    std::cout << "Média do tempo de resposta: " << mediaResposta << '\n';
+    std::cout << mediaRetorno << ' ';
+    std::cout << mediaEspera << ' ';
+    std::cout <<  mediaResposta << '\n';
 
 
-
-// int tempQueue= 0;
-
-//     while (queue.size()){
-//         tempQueue++;
-//         Processos firstArrival = queue[0];
-//         for (const auto& p : queue) {
-//             if(p.tempArrival<firstArrival.tempArrival){
-//                 firstArrival=p;
-//             }
-//         }
-//         queueSequence.push_back(firstArrival);
-//         auto it = std::remove(queue.begin(), queue.end(), firstArrival);
-//         queue.erase(it, queue.end());
-
-//     }
-
-//      std::cout << "Temp " << tempQueue << std::endl;
-//       std::cout << "Size" << queueSequence.size() << std::endl;
-//       for (const auto& p : queueSequence) {
-//         std::cout << "Processos "<< p.id << " Tempo de Chegada: " << p.tempArrival
-//                   << ", Duração: " << p.tempDuration << std::endl;
-//     }
-    
 }
+
+void FCFS(){
+
+std:: vector<Processos> queue(processos.size());
+std::copy(processos.begin(), processos.end(), queue.begin());
+    
+    std::sort(queue.begin(), queue.end(), compararFCFS);
+
+ calcularTempos(queue);
+}
+
 void SJFS(){
+   
+std:: vector<Processos> queue(processos.size());
+std::copy(processos.begin(), processos.end(), queue.begin());
+    
+    std::sort(queue.begin(), queue.end(), compararSJF);
+
+calcularTempos(queue);
+    
 
 }
 void RR_2(){
+    int quantum = 2;
+   
+    std:: vector<Processos> queue(processos.size());
+    std::copy(processos.begin(), processos.end(), queue.begin());
+    
+     // Ordenar os processos por tempo de chegada
+    std::sort(queue.begin(), queue.end(), [](const Processos& a, const Processos& b) {
+        return a.tempArrival < b.tempArrival;
+    });
+
+    // Fila para armazenar os processos prontos para execução
+    std::queue<int> filaProntos;
+    int tempoCorrente = 0;
+    int index = 0; // Índice para os processos na lista ordenada
+    int somaRetorno = 0, somaEspera = 0, somaResposta = 0;
+    bool primeiroExec = true;
+
+    // Inicializar os tempos de retorno, espera e resposta
+    for (int i = 0; i < queue.size(); ++i) {
+        queue[i].tempRestante = queue[i].tempDuration; // Inicializa o tempo restante como o tempo de duração
+    }
+
+    while (!filaProntos.empty() || index < queue.size()) {
+        // Adicionar processos que chegaram até o tempo corrente à fila
+        while (index < queue.size() && queue[index].tempArrival <= tempoCorrente) {
+            filaProntos.push(index);
+            index++;
+        }
+
+        // Atualiza o tempo atual e reinica o loop
+        if (filaProntos.empty()) {
+            tempoCorrente = queue[index].tempArrival;
+            continue;
+        }
+
+        // Pega o próximo processo da fila
+        int pid = filaProntos.front();
+        filaProntos.pop();
+        
+        // Verifica se ainda não executou o processo
+        if (queue[pid].tempRestante == queue[pid].tempDuration) {
+            queue[pid].tempResposta = tempoCorrente - queue[pid].tempArrival;
+        }
+
+        // Executa o processo 
+        int tempoExecucao = std::min(quantum, queue[pid].tempRestante);
+        queue[pid].tempRestante -= tempoExecucao;
+        tempoCorrente += tempoExecucao;
+
+        // Se o processo terminou, calcular os tempos de retorno e espera
+        if (queue[pid].tempRestante == 0) {
+            queue[pid].temRetorno = tempoCorrente - queue[pid].tempArrival;
+            queue[pid].tempEspera = queue[pid].temRetorno - queue[pid].tempDuration;
+
+            // Acumula os tempos para o cálculo das médias
+            somaRetorno += queue[pid].temRetorno;
+            somaEspera += queue[pid].tempEspera;
+            somaResposta += queue[pid].tempResposta;
+
+        } else {
+            // Se o processo não terminou, coloca-o de volta na fila
+            filaProntos.push(pid);
+        }
+
+        // Adicionar novos queue que chegaram enquanto o processo atual estava executando
+        while (index < queue.size() && queue[index].tempArrival <= tempoCorrente) {
+            filaProntos.push(index);
+            index++;
+        }
+    }
+
+    // Calculando as médias
+    double mediaRetorno = static_cast<double>(somaRetorno) / queue.size();
+    double mediaEspera = static_cast<double>(somaEspera) / queue.size();
+    double mediaResposta = static_cast<double>(somaResposta) / queue.size();
+
+   
+   
+    std::cout <<  mediaRetorno << ' ';
+    std::cout <<  mediaResposta << ' ';
+    std::cout <<  mediaEspera << '\n';
 
 }
 int main() {
     readFile();
+    std::cout << "FCFS: ";
     FCFS();
+    std::cout << "SJF: ";
+    SJFS();
+    std::cout << "RR: ";
+    RR_2();
 
   
    
