@@ -6,6 +6,7 @@
 #include <string.h>
 #include <algorithm>
 #include <queue>
+
 //    tempo de retorno: quantidade necessaria de tempo para  executar o processo
 //    tempo de espera qauntidade de tempo que o processo ficou na fila
 //    tempo de resposta : tempo para execultar pela primeira vez
@@ -27,7 +28,7 @@ struct Processos
 std::vector<Processos> processos;
 
 void readFile(){
-    int pid =1;
+    int indiceFila =1;
     std::ifstream inputFile("arquivo.txt");  // Abre o arquivo para leitura
 
     // Verifica se o arquivo foi aberto com sucesso
@@ -44,8 +45,8 @@ void readFile(){
         Processos p;
 
         ss >> p.tempArrival >> p.tempDuration;
-        p.id = pid;
-        pid++;
+        p.id = indiceFila;
+        indiceFila++;
         processos.push_back(p);
     }
 
@@ -157,32 +158,32 @@ void RR_2(){
         }
 
         // Pega o próximo processo da fila
-        int pid = filaProntos.front();
+        int indiceFila = filaProntos.front();
         filaProntos.pop();
         
         // Verifica se ainda não executou o processo
-        if (queue[pid].tempRestante == queue[pid].tempDuration) {
-            queue[pid].tempResposta = tempoCorrente - queue[pid].tempArrival;
+        if (queue[indiceFila].tempRestante == queue[indiceFila].tempDuration) {
+            queue[indiceFila].tempResposta = tempoCorrente - queue[indiceFila].tempArrival;
         }
 
         // Executa o processo 
-        int tempoExecucao = std::min(quantum, queue[pid].tempRestante);
-        queue[pid].tempRestante -= tempoExecucao;
+        int tempoExecucao = std::min(quantum, queue[indiceFila].tempRestante);
+        queue[indiceFila].tempRestante -= tempoExecucao;
         tempoCorrente += tempoExecucao;
 
         // Se o processo terminou, calcular os tempos de retorno e espera
-        if (queue[pid].tempRestante == 0) {
-            queue[pid].temRetorno = tempoCorrente - queue[pid].tempArrival;
-            queue[pid].tempEspera = queue[pid].temRetorno - queue[pid].tempDuration;
+        if (queue[indiceFila].tempRestante == 0) {
+            queue[indiceFila].temRetorno = tempoCorrente - queue[indiceFila].tempArrival;
+            queue[indiceFila].tempEspera = queue[indiceFila].temRetorno - queue[indiceFila].tempDuration;
 
             // Acumula os tempos para o cálculo das médias
-            somaRetorno += queue[pid].temRetorno;
-            somaEspera += queue[pid].tempEspera;
-            somaResposta += queue[pid].tempResposta;
+            somaRetorno += queue[indiceFila].temRetorno;
+            somaEspera += queue[indiceFila].tempEspera;
+            somaResposta += queue[indiceFila].tempResposta;
 
         } else {
             // Se o processo não terminou, coloca-o de volta na fila
-            filaProntos.push(pid);
+            filaProntos.push(indiceFila);
         }
 
         // Adicionar novos queue que chegaram enquanto o processo atual estava executando
@@ -213,7 +214,5 @@ int main() {
     std::cout << "RR: ";
     RR_2();
 
-  
-   
     return 0;
 }
